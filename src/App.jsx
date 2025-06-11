@@ -17,9 +17,6 @@ function App() {
         <Route path='/' element={<Home />} />
         <Route path='/login' element={<Login />} />
         <Route path='/register' element={<Register />} />
-        {/* <Route path='/cart' element={<Cart />} /> */}
-        {/* <Route path="/productsDetail/:id" element={<ProductDetail />} /> */}
-        {/* <Route path="/final-order" element={<FinalOrder />} /> */}
       </Routes>
       <Footer/>
     </BrowserRouter>
