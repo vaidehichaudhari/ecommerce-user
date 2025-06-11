@@ -1,92 +1,119 @@
-import React, { useEffect, useState } from "react";
-import { Card, Button, Spinner, Row, Col, Badge } from "react-bootstrap";
-import { getAllProducts, getAllBrands, getAllCategories } from "../API/api";
-import { FaRupeeSign } from "react-icons/fa";
+import React, { useEffect, useState } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
+import { FaStar, FaRegStar } from 'react-icons/fa';
+import { Button } from 'react-bootstrap';
 
 const Product = () => {
   const [products, setProducts] = useState([]);
   const [brands, setBrands] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  const fetchAllData = async () => {
-    setLoading(true);
-    const productRes = await getAllProducts();
-    const brandRes = await getAllBrands();
-    const categoryRes = await getAllCategories();
-
-    if (productRes.success) setProducts(productRes.products);
-    if (brandRes.success) setBrands(brandRes.brands);
-    if (categoryRes.success) setCategories(categoryRes.categories);
-    setLoading(false);
-  };
+  const [expanded, setExpanded] = useState({});
 
   useEffect(() => {
-    fetchAllData();
+    Promise.all([
+      fetch('http://localhost:7001/api/product/getAllProducts'),
+      fetch('http://localhost:7001/api/brand/getAllBrands'),
+      fetch('http://localhost:7001/api/category/getAllCategories')
+    ])
+      .then(async ([productRes, brandRes, categoryRes]) => {
+        if (!productRes.ok || !brandRes.ok || !categoryRes.ok) {
+          throw new Error('Failed to fetch one or more resources');
+        }
+
+        const productData = await productRes.json();
+        const brandData = await brandRes.json();
+        const categoryData = await categoryRes.json();
+
+        setProducts(productData.products || []);
+        setBrands(brandData.brands || []);
+        setCategories(categoryData.categories || []);
+      })
+      .catch(err => {
+        console.error('Error fetching data:', err);
+        toast.error('Failed to load product data');
+      });
   }, []);
 
-  const getBrandName = (id) => brands.find((b) => b.id === id)?.name || "N/A";
-  const getCategoryName = (id) => categories.find((c) => c.id === id)?.name || "N/A";
+  const getBrandName = (id) =>
+    brands.find((b) => b.id === id || b._id === id)?.name || 'N/A';
+
+  const getCategoryName = (id) =>
+    categories.find((c) => c.id === id || c._id === id)?.name || 'N/A';
+
+  const toggleReadMore = (id) => {
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleAddToCart = (product) => {
+    toast.success(`${product.name} added to cart!`);
+    // Add logic to store in cart context or localStorage
+  };
+
+  const renderStars = (rating = 4) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(i <= rating ? <FaStar key={i} className="text-warning" /> : <FaRegStar key={i} className="text-secondary" />);
+    }
+    return stars;
+  };
 
   return (
-    <div className="container py-4">
-      <h3 className="mb-4">All Products</h3>
+    <div className="container py-5">
+      <Toaster position="top-right" reverseOrder={false} />
+      <h2 className="text-center mb-4 fw-bold text-primary">🛍️ Discover Amazing Deals!</h2>
 
-      {loading ? (
-        <div className="text-center my-5">
-          <Spinner animation="border" variant="primary" />
-          <p className="mt-2 text-muted">Loading products...</p>
-        </div>
-      ) : (
-        <Row xs={1} sm={2} md={3} lg={4} className="g-4">
-          {products.map((product) => (
-            <Col key={product.id}>
-              <Card className="h-100 shadow-sm">
-                <Card.Img
-                  variant="top"
-                  src={product.image || "/no-image.png"}
-                  style={{
-                    height: "180px",
-                    objectFit: "cover",
-                    borderBottom: "1px solid #eee",
-                  }}
+      <div className="row row-cols-1 row-cols-md-3 g-4">
+        {products.length === 0 ? (
+          <p className="text-center text-muted">No products available.</p>
+        ) : (
+          products.map(product => (
+            <div className="col" key={product.id || product._id}>
+              <div className="card h-100 shadow-sm border-0 rounded-4">
+                <img
+                  src={product.image}
+                  className="mx-auto d-block mt-3 rounded"
+                  alt={product.name}
+                  style={{ height: '120px', width: '120px', objectFit: 'cover' }}
                 />
-                <Card.Body>
-                  <Card.Title>{product.name}</Card.Title>
-                  <Card.Text className="text-muted" style={{ fontSize: "0.9rem" }}>
-                    {product.description?.substring(0, 80) || "-"}...
-                  </Card.Text>
 
-                  <div className="mb-2">
-                    <strong>Price: </strong>
-                    <FaRupeeSign className="me-1" />
-                    {product.price.toFixed(2)}
+                <div className="card-body">
+                  <h5 className="card-title fw-semibold">{product.name}</h5>
+                  
+                  <p className="card-text text-muted small">
+                    {expanded[product._id || product.id]
+                      ? product.description
+                      : `${product.description.slice(0, 60)}...`}
+                    {product.description.length > 60 && (
+                      <span
+                        className="text-primary ms-1"
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => toggleReadMore(product._id || product.id)}
+                      >
+                        {expanded[product._id || product.id] ? 'Read Less' : 'Read More'}
+                      </span>
+                    )}
+                  </p>
+
+                  <p className="mb-1"><strong>Price:</strong> ₹{product.price.toFixed(2)}</p>
+                  <p className="mb-1"><strong>Brand:</strong> {getBrandName(product.brandId)}</p>
+                  <p className="mb-1"><strong>Category:</strong> {getCategoryName(product.categoryId)}</p>
+
+                  <div className="mb-2">{renderStars(4)}</div>
+
+                  <div className="d-flex justify-content-between">
+                    <Button variant="primary" size="sm" onClick={() => handleAddToCart(product)}>
+                      Add to Cart
+                    </Button>
+                    <Button variant="outline-secondary" size="sm">
+                      View Details
+                    </Button>
                   </div>
-                  <div style={{ fontSize: "0.85rem" }}>
-                    <Badge bg="info" className="me-1">
-                      {getBrandName(product.brandId)}
-                    </Badge>
-                    <Badge bg="secondary">{getCategoryName(product.categoryId)}</Badge>
-                  </div>
-                </Card.Body>
-                <Card.Footer className="bg-light d-flex justify-content-between align-items-center">
-                  <small className="text-muted">
-                    {product.inStock ? "In Stock" : "Out of Stock"}
-                  </small>
-                  <Button
-                    variant="success"
-                    size="sm"
-                    disabled={!product.inStock}
-                    onClick={() => alert(`Add ${product.name} to cart`)}
-                  >
-                    Add to Cart
-                  </Button>
-                </Card.Footer>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      )}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 };
