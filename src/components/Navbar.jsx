@@ -1,96 +1,68 @@
-import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { FaUserCircle } from "react-icons/fa";
-import { toast } from "react-hot-toast";
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { getUserInfo, logoutAPI } from '../API/api';
 
 const Navbar = () => {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
-  // Example fetch user info from localStorage or API
   useEffect(() => {
-    const loggedInUser = JSON.parse(localStorage.getItem("user"));
-    if (loggedInUser) {
-      setUser(loggedInUser);
-    }
-  }, []);
+    const fetchUser = async () => {
+      const token = localStorage.getItem('token'); // ✅ Check if token exists
+      if (token) {
+        try {
+          const res = await getUserInfo(); // Assume this uses the token internally
+          if (res.success) {
+            setUser(res.loggedUser);
+          }
+        } catch (error) {
+          console.error('Error fetching user:', error);
+        }
+      }
+    };
+
+    fetchUser();
+  }, []); // No dependencies: run once on mount
 
   const handleLogout = () => {
-    // Clear user data & redirect
-    localStorage.removeItem("user");
+    logoutAPI(); // Presumably clears token from storage or cookie
+    localStorage.removeItem('token'); // ✅ Ensure token is cleared
     setUser(null);
-    toast.success("Logged out successfully");
-    navigate("/login");
+    navigate('/login');
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
-      <div className="container">
-        <Link className="navbar-brand fw-bold" to="/">
-          MyApp
+    <nav className="navbar navbar-expand-lg navbar-light bg-light shadow-sm sticky-top">
+      <div className="container d-flex justify-content-between">
+        {/* App Title */}
+        <Link className="navbar-brand fw-bold fs-4 text-primary" to="/">
+          Shopvista
         </Link>
-        <button
-          className="navbar-toggler"
-          type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#navbarNav"
-          aria-controls="navbarNav"
-          aria-expanded="false"
-          aria-label="Toggle navigation"
-        >
-          <span className="navbar-toggler-icon"></span>
-        </button>
 
-        <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav me-auto">
-            <li className="nav-item">
-              <Link className="nav-link" to="/">
-                Home
+        {/* Right Side: Welcome + Logout/Login */}
+        <div className="d-flex align-items-center">
+          {user ? (
+            <>
+              <span className="me-3 text-dark fw-medium">
+                Welcome, {user.name}
+              </span>
+              <button
+                className="btn btn-outline-danger btn-sm"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-outline-primary btn-sm me-2">
+                Login
               </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link" to="/about">
-                About
+              <Link to="/register" className="btn btn-outline-secondary btn-sm">
+                Register
               </Link>
-            </li>
-            <li className="nav-item">
-              <Link className="nav-link" to="/contact">
-                Contact
-              </Link>
-            </li>
-          </ul>
-
-          <ul className="navbar-nav ms-auto">
-            {!user ? (
-              <>
-                <li className="nav-item">
-                  <Link className="nav-link" to="/login">
-                    Login
-                  </Link>
-                </li>
-                <li className="nav-item">
-                  <Link className="nav-link" to="/register">
-                    Register
-                  </Link>
-                </li>
-              </>
-            ) : (
-              <>
-                <li className="nav-item d-flex align-items-center">
-                  <FaUserCircle size={24} className="me-1" />
-                  <span className="nav-link mb-0">{user.name}</span>
-                </li>
-                <li className="nav-item">
-                  <button
-                    className="btn btn-outline-light btn-sm ms-2"
-                    onClick={handleLogout}
-                  >
-                    Logout
-                  </button>
-                </li>
-              </>
-            )}
-          </ul>
+            </>
+          )}
         </div>
       </div>
     </nav>
